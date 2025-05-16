@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import api from '../api'; // Import the configured axios instance
+import api from '../api';
 import TemplateCard from '../components/TemplateCard';
 import Header from '../components/Header';
 import { FaRocket, FaLightbulb, FaStar, FaUserGraduate, FaDollarSign, FaEdit, FaQuoteLeft, FaCheck, FaTimes, FaQuestionCircle, FaBook, FaDownload, FaPen, FaGlobe } from 'react-icons/fa';
@@ -9,7 +9,7 @@ import { FaRocket, FaLightbulb, FaStar, FaUserGraduate, FaDollarSign, FaEdit, Fa
 function Home() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // Added to display errors
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -33,6 +33,7 @@ function Home() {
       });
   }, []);
 
+  // Rest of the component unchanged
   const testimonials = [
     { name: 'Aisha K.', role: 'Computer Science Student', quote: 'This template helped me land my first internship!', rating: 5 },
     { name: 'Liam M.', role: 'Graphic Design Major', quote: 'Finally, a template that doesn’t look like everyone else’s.', rating: 4 },
@@ -57,8 +58,6 @@ function Home() {
   return (
     <div className="bg-lightBlue min-h-screen">
       <Header />
-
-      {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center md:text-left">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div>
@@ -81,8 +80,6 @@ function Home() {
           </div>
         </motion.div>
       </section>
-
-      {/* Why Choose Us Section */}
       <section className="bg-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-navy-900 mb-12">Why Buy From Us?</h2>
@@ -105,8 +102,6 @@ function Home() {
           </div>
         </div>
       </section>
-
-      {/* How It Works Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h2 className="text-3xl font-bold text-navy-900 mb-12">How It Works</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -127,8 +122,6 @@ function Home() {
           </motion.div>
         </div>
       </section>
-
-      {/* Featured Templates Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="text-3xl font-bold text-navy-900 mb-8 text-center">Featured Templates</h2>
         {loading ? (
@@ -150,8 +143,6 @@ function Home() {
           </Link>
         </div>
       </section>
-
-      {/* Comparison Section */}
       <section className="bg-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-navy-900 mb-12">Us vs. Generic Templates</h2>
@@ -175,8 +166,6 @@ function Home() {
           </div>
         </div>
       </section>
-
-      {/* Stats Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h2 className="text-3xl font-bold text-navy-900 mb-12">Trusted by Students Worldwide</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -197,8 +186,6 @@ function Home() {
           </motion.div>
         </div>
       </section>
-
-      {/* Testimonials Section */}
       <section className="bg-lightBlue py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-navy-900 mb-12">What Students Are Saying</h2>
@@ -219,8 +206,6 @@ function Home() {
           </div>
         </div>
       </section>
-
-      {/* Blog/Guides Teaser Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="text-3xl font-bold text-navy-900 mb-12 text-center">Helpful Resources for Students</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -238,8 +223,6 @@ function Home() {
           ))}
         </div>
       </section>
-
-      {/* FAQ Section */}
       <section className="bg-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-navy-900 mb-12">Frequently Asked Questions</h2>
@@ -260,8 +243,6 @@ function Home() {
           </div>
         </div>
       </section>
-
-      {/* Final CTA Section */}
       <section className="bg-brightBlue py-16 text-center">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-white mb-6">Don’t Blend In—Stand Out!</h2>
