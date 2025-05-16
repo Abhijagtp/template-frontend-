@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaEye, FaShoppingCart, FaCode, FaPaintBrush, FaFileAlt } from 'react-icons/fa';
 import { useState } from 'react';
-import api from '../api'; // Import the configured axios instance
+import axios from 'axios';
 
 function TemplateCard({ template }) {
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -25,7 +25,7 @@ function TemplateCard({ template }) {
     setPaymentError(null);
 
     try {
-      const response = await api.post(`/api/templates/${template.id}/initiate-payment/`, {
+      const response = await axios.post(`/api/templates/${template.id}/initiate-payment/`, {
         email,
         phone,
       });
@@ -38,23 +38,18 @@ function TemplateCard({ template }) {
       }
 
       const cashfree = new window.Cashfree({
-        mode: process.env.REACT_APP_CASHFREE_MODE || 'sandbox', // Use 'production' for live
+        mode: 'sandbox', // Use 'production' for live environment
       });
 
-      cashfree
-        .checkout({
-          paymentSessionId: payment_session_id,
-          returnUrl: `${
-            process.env.REACT_APP_FRONTEND_URL || 'http://localhost:5173'
-          }/payment-status?order_id=${order_id}`,
-        })
-        .then(() => {
-          console.log('Payment initiated successfully');
-        })
-        .catch((error) => {
-          console.error('Payment initiation failed:', error);
-          setPaymentError('Failed to initiate payment. Please try again.');
-        });
+      cashfree.checkout({
+        paymentSessionId: payment_session_id,
+        returnUrl: `http://localhost:5173/payment-status?order_id=${order_id}`,
+      }).then(() => {
+        console.log('Payment initiated successfully');
+      }).catch((error) => {
+        console.error('Payment initiation failed:', error);
+        setPaymentError('Failed to initiate payment. Please try again.');
+      });
     } catch (error) {
       console.error('Payment Initiation Error:', error);
       if (error.response) {
@@ -90,7 +85,7 @@ function TemplateCard({ template }) {
         <h3 className="text-lg font-semibold text-navy-900 mb-2">{template.title}</h3>
         <p className="text-gray-700 text-sm mb-3 line-clamp-2">{template.description}</p>
         <div className="flex flex-wrap gap-2 mb-4">
-          {tags.map((tag) => (
+          {tags.map(tag => (
             <span
               key={tag.name}
               className="bg-lightBlue text-brightBlue text-xs font-medium px-2 py-1 rounded-lg flex items-center"
