@@ -33,7 +33,6 @@ function Home() {
       });
   }, []);
 
-  // Rest of the component unchanged
   const testimonials = [
     { name: 'Aisha K.', role: 'Computer Science Student', quote: 'This template helped me land my first internship!', rating: 5 },
     { name: 'Liam M.', role: 'Graphic Design Major', quote: 'Finally, a template that doesn’t look like everyone else’s.', rating: 4 },

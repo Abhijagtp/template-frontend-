@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../api';
 import TemplateCard from '../components/TemplateCard';
+import Header from '../components/Header';
 import { FaArrowRight, FaFilter, FaSearch, FaTimes } from 'react-icons/fa';
 
 function CategoryPage() {
-  const { id } = useParams(); // Get category ID from URL
+  const { id } = useParams();
   const [templates, setTemplates] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(id || 'all');
@@ -16,14 +17,21 @@ function CategoryPage() {
 
   // Fetch categories
   useEffect(() => {
-    axios
-      .get('/api/categories/')
+    api.get('/api/categories/')
       .then(response => {
-        console.log('Categories:', response.data);
+        console.log('API Base URL:', api.defaults.baseURL);
+        console.log('Categories Response:', response.data);
         setCategories([{ id: 'all', name: 'All Categories' }, ...response.data]);
       })
       .catch(error => {
-        console.error('Categories Error:', error);
+        console.error('Categories Error:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          url: error.config?.url,
+          code: error.code,
+        });
+        setError('Failed to load categories.');
       });
   }, []);
 
@@ -38,15 +46,21 @@ function CategoryPage() {
     if (searchQuery) {
       params.search = searchQuery;
     }
-    axios
-      .get(url, { params })
+    api.get(url, { params })
       .then(response => {
-        console.log('Templates:', response.data);
+        console.log('API Base URL:', api.defaults.baseURL);
+        console.log('Templates Response:', response.data);
         setTemplates(response.data);
         setLoading(false);
       })
       .catch(error => {
-        console.error('Templates Error:', error);
+        console.error('Templates Error:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          url: error.config?.url,
+          code: error.code,
+        });
         setError('Failed to load templates.');
         setLoading(false);
       });
@@ -66,6 +80,7 @@ function CategoryPage() {
 
   return (
     <div className="bg-lightBlue min-h-screen">
+      <Header />
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.div
           initial={{ opacity: 0 }}
@@ -76,8 +91,8 @@ function CategoryPage() {
           <div className="flex flex-col md:flex-row justify-between items-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-navy-900 flex items-center">
               <FaFilter className="icon text-brightBlue mr-2" />
-              {selectedCategory === 'all' 
-                ? 'All Templates' 
+              {selectedCategory === 'all'
+                ? 'All Templates'
                 : categories.find(cat => cat.id === selectedCategory)?.name || 'Templates'}
             </h1>
             <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0">

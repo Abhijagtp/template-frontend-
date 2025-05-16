@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaEye, FaShoppingCart, FaCode, FaPaintBrush, FaFileAlt } from 'react-icons/fa';
 import { useState } from 'react';
-import api from '../api'; // Import the configured axios instance
+import api from '../api';
 
 function TemplateCard({ template }) {
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -38,7 +38,7 @@ function TemplateCard({ template }) {
       }
 
       const cashfree = new window.Cashfree({
-        mode: 'production', // Use 'production' for live environment
+        mode: 'production',
       });
 
       cashfree.checkout({
@@ -116,7 +116,6 @@ function TemplateCard({ template }) {
         </div>
       </motion.div>
 
-      {/* Email Modal */}
       {showEmailModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
