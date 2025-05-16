@@ -1,26 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../api'; // Import the configured axios instance
 import TemplateCard from '../components/TemplateCard';
-import Header from '../components/Header'; // Import the Header
+import Header from '../components/Header';
 import { FaRocket, FaLightbulb, FaStar, FaUserGraduate, FaDollarSign, FaEdit, FaQuoteLeft, FaCheck, FaTimes, FaQuestionCircle, FaBook, FaDownload, FaPen, FaGlobe } from 'react-icons/fa';
 
 function Home() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // Added to display errors
 
   useEffect(() => {
     setLoading(true);
-    axios
-      .get('/api/templates/')
+    api.get('/api/templates/')
       .then(response => {
-        console.log('Templates:', response.data);
+        console.log('API Base URL:', api.defaults.baseURL);
+        console.log('Templates Response:', response.data);
         setTemplates(response.data.slice(0, 3));
         setLoading(false);
       })
       .catch(error => {
-        console.error('Templates Error:', error);
+        console.error('Templates Error:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          url: error.config?.url,
+          code: error.code,
+        });
+        setError('Failed to load templates. Please try again.');
         setLoading(false);
       });
   }, []);
@@ -48,7 +56,6 @@ function Home() {
 
   return (
     <div className="bg-lightBlue min-h-screen">
-      {/* Add the Header */}
       <Header />
 
       {/* Hero Section */}
@@ -126,6 +133,8 @@ function Home() {
         <h2 className="text-3xl font-bold text-navy-900 mb-8 text-center">Featured Templates</h2>
         {loading ? (
           <p className="text-center text-navy-900 text-lg">Loading templates...</p>
+        ) : error ? (
+          <p className="text-center text-red-500">{error}</p>
         ) : templates.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {templates.map(template => (

@@ -1,9 +1,8 @@
-// src/components/TemplateCard.jsx
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaEye, FaShoppingCart, FaCode, FaPaintBrush, FaFileAlt } from 'react-icons/fa';
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../api'; // Import the configured axios instance
 
 function TemplateCard({ template }) {
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -25,10 +24,11 @@ function TemplateCard({ template }) {
     setPaymentError(null);
 
     try {
-      const response = await axios.post(`/api/templates/${template.id}/initiate-payment/`, {
+      const response = await api.post(`/api/templates/${template.id}/initiate-payment/`, {
         email,
         phone,
       });
+      console.log('API Base URL:', api.defaults.baseURL);
       console.log('Payment Initiation Response:', response.data);
       const { payment_session_id, order_id } = response.data;
 
@@ -38,12 +38,14 @@ function TemplateCard({ template }) {
       }
 
       const cashfree = new window.Cashfree({
-        mode: 'sandbox', // Use 'production' for live environment
+        mode: 'production', // Use 'production' for live environment
       });
 
       cashfree.checkout({
         paymentSessionId: payment_session_id,
-        returnUrl: `http://localhost:5173/payment-status?order_id=${order_id}`,
+        returnUrl: `${
+          process.env.REACT_APP_FRONTEND_URL || 'http://localhost:5173'
+        }/payment-status?order_id=${order_id}`,
       }).then(() => {
         console.log('Payment initiated successfully');
       }).catch((error) => {
@@ -51,21 +53,22 @@ function TemplateCard({ template }) {
         setPaymentError('Failed to initiate payment. Please try again.');
       });
     } catch (error) {
-      console.error('Payment Initiation Error:', error);
+      console.error('Payment Initiation Error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url,
+        code: error.code,
+      });
       if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-        console.error('Response headers:', error.response.headers);
         setPaymentError(
           error.response.data.cashfree_error
             ? `Failed to initiate payment: ${error.response.data.cashfree_error}`
             : 'Failed to initiate payment. Please try again.'
         );
       } else if (error.request) {
-        console.error('No response received:', error.request);
         setPaymentError('No response received from server. Please try again.');
       } else {
-        console.error('Error message:', error.message);
         setPaymentError('Failed to initiate payment. Please try again.');
       }
     }
