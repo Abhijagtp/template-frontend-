@@ -2,11 +2,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import axios from 'axios';
 import Slider from 'react-slick';
 import { FaShoppingCart, FaEye, FaStar, FaArrowLeft, FaArrowRight, FaCheck, FaHome } from 'react-icons/fa';
 import TemplateCard from '../components/TemplateCard';
 import Header from '../components/Header';
+import api from '../api'; // Import the configured axios instance
 
 function TemplateDetails() {
   const { id } = useParams();
@@ -25,29 +25,38 @@ function TemplateDetails() {
   const [paymentError, setPaymentError] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    axios
-      .get(`/api/templates/${id}/`)
-      .then(response => {
-        console.log('Template:', response.data);
+    const fetchTemplate = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/api/templates/${id}/`);
         setTemplate(response.data);
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Failed to load template details.');
+      } finally {
         setLoading(false);
-      })
-      .catch(error => {
-        console.error('Template Error:', error);
-        setError('Failed to load template details.');
-        setLoading(false);
-      });
+      }
+    };
 
-    axios
-      .get('/api/templates/', { params: { category: id } })
-      .then(response => {
-        setRelatedTemplates(response.data.filter(t => t.id !== parseInt(id)).slice(0, 3));
-      })
-      .catch(error => {
-        console.error('Related Templates Error:', error);
-      });
-  }, [id]);
+    const fetchRelatedTemplates = async () => {
+      try {
+        // Fetch related templates based on the template's category
+        const response = await api.get('/api/templates/', {
+          params: { category: template?.category?.id || '' },
+        });
+        setRelatedTemplates(
+          response.data.filter((t) => t.id !== parseInt(id)).slice(0, 3)
+        );
+      } catch (err) {
+        // Silent error for related templates to avoid disrupting the main content
+        setRelatedTemplates([]);
+      }
+    };
+
+    fetchTemplate();
+    if (template) {
+      fetchRelatedTemplates();
+    }
+  }, [id, template?.category?.id]);
 
   const sliderSettings = {
     dots: true,
@@ -72,31 +81,28 @@ function TemplateDetails() {
     setPreviewMode(previewMode === 'screenshot' ? 'live' : 'screenshot');
   };
 
-  const handleReviewSubmit = (e) => {
+  const handleReviewSubmit = async (e) => {
     e.preventDefault();
     if (reviewForm.rating === 0) {
       setReviewError('Please select a rating.');
       return;
     }
-    setReviewError(null);
-    setReviewSuccess(false);
-    axios
-      .post('/api/reviews/submit/', {
+    try {
+      setReviewError(null);
+      setReviewSuccess(false);
+      const response = await api.post('/api/reviews/submit/', {
         template: id,
         user: reviewForm.user,
         rating: reviewForm.rating,
         comment: reviewForm.comment,
-      })
-      .then(response => {
-        setReviewSuccess(true);
-        setReviewForm({ user: '', rating: 0, comment: '' });
-        setHoverRating(0);
-        setTemplate(response.data.template);
-      })
-      .catch(error => {
-        console.error('Review Submit Error:', error);
-        setReviewError('Failed to submit review. Please try again.');
       });
+      setReviewSuccess(true);
+      setReviewForm({ user: '', rating: 0, comment: '' });
+      setHoverRating(0);
+      setTemplate(response.data.template);
+    } catch (err) {
+      setReviewError(err.response?.data?.detail || 'Failed to submit review.');
+    }
   };
 
   const handleReviewChange = (e) => {
@@ -123,34 +129,41 @@ function TemplateDetails() {
     setPaymentError(null);
 
     try {
-      const response = await axios.post(`/api/templates/${id}/initiate-payment/`, {
+      const response = await api.post(`/api/templates/${id}/initiate-payment/`, {
         email,
         phone,
       });
-      console.log('Payment Initiation Response:', response.data);
       const { payment_session_id, order_id } = response.data;
 
       if (!payment_session_id) {
-        setPaymentError('Payment session ID not received. Please try again.');
+        setPaymentError('Payment session ID not received.');
+        return;
+      }
+
+      if (!window.Cashfree) {
+        setPaymentError('Payment gateway not loaded. Please try again.');
         return;
       }
 
       const cashfree = new window.Cashfree({
-        mode: 'sandbox', // Use 'production' for live environment
+        mode: import.meta.env.VITE_CASHFREE_MODE || 'sandbox',
       });
 
-      cashfree.checkout({
-        paymentSessionId: payment_session_id,
-        returnUrl: `http://localhost:5173/payment-status?order_id=${order_id}`,
-      }).then(() => {
-        console.log('Payment initiated successfully');
-      }).catch((error) => {
-        console.error('Payment initiation failed:', error);
-        setPaymentError('Failed to initiate payment. Please try again.');
-      });
-    } catch (error) {
-      console.error('Payment Initiation Error:', error);
-      setPaymentError('Failed to initiate payment. Please try again.');
+      cashfree
+        .checkout({
+          paymentSessionId: payment_session_id,
+          returnUrl: `${
+            import.meta.env.VITE_APP_URL || 'http://localhost:5173'
+          }/payment-status?order_id=${order_id}`,
+        })
+        .then(() => {
+          // Payment initiated, user redirected to payment gateway
+        })
+        .catch((err) => {
+          setPaymentError('Failed to initiate payment.');
+        });
+    } catch (err) {
+      setPaymentError(err.response?.data?.detail || 'Failed to initiate payment.');
     }
   };
 
@@ -165,7 +178,6 @@ function TemplateDetails() {
   return (
     <div className="bg-lightBlue min-h-screen">
       <Header />
-
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
           <Link to="/" className="inline-flex items-center text-brightBlue font-semibold hover:underline mb-6">
@@ -180,21 +192,17 @@ function TemplateDetails() {
                 {[...Array(5)].map((_, i) => (
                   <FaStar
                     key={i}
-                    className={
-                      i < Math.round(template.average_rating)
-                        ? 'text-brightBlue'
-                        : 'text-gray-300'
-                    }
+                    className={i < Math.round(template.average_rating || 0) ? 'text-brightBlue' : 'text-gray-300'}
                   />
                 ))}
-                <span className="ml-2 text-gray-700">{template.average_rating.toFixed(1)}</span>
+                <span className="ml-2 text-gray-700">{(template.average_rating || 0).toFixed(1)}</span>
               </div>
               <button
                 onClick={() => setShowEmailModal(true)}
                 className="inline-flex items-center bg-brightBlue text-white font-semibold px-6 py-3 rounded-lg hover:bg-brightBlue/90 transition-colors shadow-sm"
               >
                 <FaShoppingCart className="mr-2" />
-                Buy Now - ₹{template.price}
+                Buy Now - ₹{template.price || 'N/A'}
               </button>
             </div>
           </div>
@@ -267,7 +275,7 @@ function TemplateDetails() {
                   </Slider>
                 ) : (
                   <iframe
-                    src={template.live_preview_url || `https://via.placeholder.com/600?text=Live+Preview+${template.title}`}
+                    src={template.live_preview_url || 'https://via.placeholder.com/600?text=Live+Preview'}
                     title="Live Preview"
                     className="w-full h-96 rounded-lg border-0"
                   />
@@ -284,11 +292,11 @@ function TemplateDetails() {
 
             <div className="bg-white border border-gray-200 shadow-lg p-6">
               <h2 className="text-2xl font-semibold text-navy-900 mb-4">Template Details</h2>
-              <p className="text-gray-700 text-base leading-relaxed mb-6">{template.description}</p>
+              <p className="text-gray-700 text-base leading-relaxed mb-6">{template.description || 'No description available.'}</p>
               <div className="mb-6">
                 <h3 className="text-lg font-medium text-navy-900 mb-2">Category</h3>
                 <span className="bg-lightBlue text-brightBlue text-sm font-medium px-3 py-1 rounded-lg">
-                  {template.category.name}
+                  {template.category?.name || 'Uncategorized'}
                 </span>
               </div>
               <div className="mb-6">
@@ -321,7 +329,7 @@ function TemplateDetails() {
                   className="w-full inline-flex items-center justify-center bg-brightBlue text-white font-semibold px-6 py-3 rounded-lg hover:bg-brightBlue/90 transition-colors shadow-sm"
                 >
                   <FaShoppingCart className="mr-2" />
-                  Buy Now - ₹{template.price}
+                  Buy Now - ₹{template.price || 'N/A'}
                 </button>
               </div>
             </div>
@@ -337,15 +345,15 @@ function TemplateDetails() {
                       {[...Array(5)].map((_, i) => (
                         <FaStar
                           key={i}
-                          className={
-                            i < review.rating ? 'text-brightBlue' : 'text-gray-300'
-                          }
+                          className={i < (review.rating || 0) ? 'text-brightBlue' : 'text-gray-300'}
                         />
                       ))}
                     </div>
-                    <p className="text-gray-700 italic mb-4">"{review.comment}"</p>
-                    <p className="text-navy-900 font-medium">{review.user}</p>
-                    <p className="text-gray-500 text-sm">{new Date(review.date).toLocaleDateString()}</p>
+                    <p className="text-gray-700 italic mb-4">"{review.comment || 'No comment provided.'}"</p>
+                    <p className="text-navy-900 font-medium">{review.user || 'Anonymous'}</p>
+                    <p className="text-gray-500 text-sm">
+                      {review.date ? new Date(review.date).toLocaleDateString() : 'N/A'}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -420,7 +428,7 @@ function TemplateDetails() {
             <div className="mt-12">
               <h2 className="text-2xl font-bold text-navy-900 mb-6">Explore Similar Templates</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {relatedTemplates.map(template => (
+                {relatedTemplates.map((template) => (
                   <TemplateCard key={template.id} template={template} />
                 ))}
               </div>
