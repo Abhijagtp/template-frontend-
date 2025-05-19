@@ -122,50 +122,50 @@ function TemplateDetails() {
   };
 
   const handlePayment = async () => {
-    if (!email) {
-      setPaymentError('Please enter your email address.');
+  if (!email) {
+    setPaymentError('Please enter your email address.');
+    return;
+  }
+  setPaymentError(null);
+
+  try {
+    const response = await api.post(`/api/templates/${id}/initiate-payment/`, {
+      email,
+      phone,
+    });
+    const { payment_session_id, order_id } = response.data;
+
+    if (!payment_session_id) {
+      setPaymentError('Payment session ID not received.');
       return;
     }
-    setPaymentError(null);
 
-    try {
-      const response = await api.post(`/api/templates/${id}/initiate-payment/`, {
-        email,
-        phone,
-      });
-      const { payment_session_id, order_id } = response.data;
-
-      if (!payment_session_id) {
-        setPaymentError('Payment session ID not received.');
-        return;
-      }
-
-      if (!window.Cashfree) {
-        setPaymentError('Payment gateway not loaded. Please try again.');
-        return;
-      }
-
-      const cashfree = new window.Cashfree({
-        mode: import.meta.env.VITE_CASHFREE_MODE || 'sandbox',
-      });
-
-      cashfree
-        .checkout({
-          paymentSessionId: payment_session_id,
-          returnUrl: `${
-            import.meta.env.VITE_APP_URL || 'http://localhost:5173'
-          }/payment-status?order_id=${order_id}`,
-        })
-        .then(() => {
-          // Payment initiated, user redirected to payment gateway
-        })
-        .catch((err) => {
-          setPaymentError('Failed to initiate payment.');
-        });
-    } catch (err) {
-      setPaymentError(err.response?.data?.detail || 'Failed to initiate payment.');
+    if (!window.Cashfree) {
+      setPaymentError('Payment gateway not loaded. Please try again.');
+      return;
     }
-  };
+
+    const cashfree = new window.Cashfree({
+      mode: import.meta.env.VITE_CASHFREE_MODE || 'sandbox',
+    });
+
+    cashfree
+      .checkout({
+        paymentSessionId: payment_session_id,
+        returnUrl: `${
+          import.meta.env.VITE_APP_URL || 'http://localhost:5173'
+        }/payment-status?order_id=${order_id}`,
+      })
+      .then(() => {
+        // Payment initiated, user redirected to payment gateway
+      })
+      .catch((err) => {
+        setPaymentError('Failed to initiate payment.');
+      });
+  } catch (err) {
+    setPaymentError(err.message || 'Failed to initiate payment.');
+  }
+};
 
   if (loading) return <p className="text-center text-navy-900 text-lg py-16">Loading template...</p>;
   if (error) return <p className="text-center text-red-500 text-lg py-16">{error}</p>;

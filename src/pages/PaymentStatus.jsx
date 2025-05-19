@@ -1,7 +1,7 @@
 // src/pages/PaymentStatus.jsx
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api'; // Use the configured axios instance
 import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 
 function PaymentStatus() {
@@ -19,12 +19,11 @@ function PaymentStatus() {
       // Fetch payment status from backend
       const checkPaymentStatus = async () => {
         try {
-          const response = await axios.get(`/api/payments/${orderId}/`);
+          const response = await api.get(`/api/payments/${orderId}/`);
           setPayment(response.data);
           setLoading(false);
         } catch (err) {
-          console.error('Payment Status Error:', err);
-          setError('Failed to fetch payment status.');
+          setError(err.message || 'Failed to fetch payment status.');
           setLoading(false);
         }
       };
@@ -91,7 +90,7 @@ function PaymentStatus() {
             <h1 className="text-2xl font-bold text-navy-900 mb-2">Payment Failed</h1>
             <p className="text-gray-700 mb-6">Something went wrong. Please try again.</p>
             <button
-              onClick={() => navigate(`/template/${payment.template.id}`)}
+              onClick={() => navigate(`/template/${payment.template?.id || ''}`)}
               className="bg-brightBlue text-white font-semibold px-6 py-3 rounded-lg hover:bg-brightBlue/90 transition-colors"
             >
               Try Again
