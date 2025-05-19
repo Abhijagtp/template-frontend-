@@ -1,4 +1,3 @@
-// src/pages/TemplateDetails.jsx
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -6,7 +5,7 @@ import Slider from 'react-slick';
 import { FaShoppingCart, FaEye, FaStar, FaArrowLeft, FaArrowRight, FaCheck, FaHome } from 'react-icons/fa';
 import TemplateCard from '../components/TemplateCard';
 import Header from '../components/Header';
-import api from '../api'; // Import the configured axios instance
+import api from '../api';
 
 function TemplateDetails() {
   const { id } = useParams();
@@ -39,7 +38,6 @@ function TemplateDetails() {
 
     const fetchRelatedTemplates = async () => {
       try {
-        // Fetch related templates based on the template's category
         const response = await api.get('/api/templates/', {
           params: { category: template?.category?.id || '' },
         });
@@ -47,7 +45,6 @@ function TemplateDetails() {
           response.data.filter((t) => t.id !== parseInt(id)).slice(0, 3)
         );
       } catch (err) {
-        // Silent error for related templates to avoid disrupting the main content
         setRelatedTemplates([]);
       }
     };
@@ -67,12 +64,12 @@ function TemplateDetails() {
     arrows: true,
     prevArrow: (
       <div className="carousel-arrow -left-10" aria-label="Previous Slide">
-        <FaArrowLeft className="text-3xl" />
+        <FaArrowLeft className="text-3xl text-brightBlue" />
       </div>
     ),
     nextArrow: (
       <div className="carousel-arrow -right-10" aria-label="Next Slide">
-        <FaArrowRight className="text-3xl" />
+        <FaArrowRight className="text-3xl text-brightBlue" />
       </div>
     ),
   };
@@ -122,50 +119,50 @@ function TemplateDetails() {
   };
 
   const handlePayment = async () => {
-  if (!email) {
-    setPaymentError('Please enter your email address.');
-    return;
-  }
-  setPaymentError(null);
-
-  try {
-    const response = await api.post(`/api/templates/${id}/initiate-payment/`, {
-      email,
-      phone,
-    });
-    const { payment_session_id, order_id } = response.data;
-
-    if (!payment_session_id) {
-      setPaymentError('Payment session ID not received.');
+    if (!email) {
+      setPaymentError('Please enter your email address.');
       return;
     }
+    setPaymentError(null);
 
-    if (!window.Cashfree) {
-      setPaymentError('Payment gateway not loaded. Please try again.');
-      return;
-    }
-
-    const cashfree = new window.Cashfree({
-      mode: import.meta.env.VITE_CASHFREE_MODE || 'sandbox',
-    });
-
-    cashfree
-      .checkout({
-        paymentSessionId: payment_session_id,
-        returnUrl: `${
-          import.meta.env.VITE_APP_URL || 'http://localhost:5173'
-        }/payment-status?order_id=${order_id}`,
-      })
-      .then(() => {
-        // Payment initiated, user redirected to payment gateway
-      })
-      .catch((err) => {
-        setPaymentError('Failed to initiate payment.');
+    try {
+      const response = await api.post(`/api/templates/${id}/initiate-payment/`, {
+        email,
+        phone,
       });
-  } catch (err) {
-    setPaymentError(err.message || 'Failed to initiate payment.');
-  }
-};
+      const { payment_session_id, order_id } = response.data;
+
+      if (!payment_session_id) {
+        setPaymentError('Payment session ID not received.');
+        return;
+      }
+
+      if (!window.Cashfree) {
+        setPaymentError('Payment gateway not loaded. Please try again.');
+        return;
+      }
+
+      const cashfree = new window.Cashfree({
+        mode: import.meta.env.VITE_CASHFREE_MODE || 'sandbox',
+      });
+
+      cashfree
+        .checkout({
+          paymentSessionId: payment_session_id,
+          returnUrl: `${
+            import.meta.env.VITE_APP_URL || 'http://localhost:5173'
+          }/payment-status?order_id=${order_id}`,
+        })
+        .then(() => {
+          // Payment initiated, user redirected to payment gateway
+        })
+        .catch((err) => {
+          setPaymentError('Failed to initiate payment.');
+        });
+    } catch (err) {
+      setPaymentError(err.message || 'Failed to initiate payment.');
+    }
+  };
 
   if (loading) return <p className="text-center text-navy-900 text-lg py-16">Loading template...</p>;
   if (error) return <p className="text-center text-red-500 text-lg py-16">{error}</p>;
@@ -180,11 +177,13 @@ function TemplateDetails() {
       <Header />
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
+          {/* Back to Home Link */}
           <Link to="/" className="inline-flex items-center text-brightBlue font-semibold hover:underline mb-6">
             <FaHome className="mr-2" />
             Back to Home
           </Link>
 
+          {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-10">
             <h1 className="text-4xl font-bold text-navy-900 mb-4 md:mb-0">{template.title}</h1>
             <div className="flex items-center space-x-4">
@@ -202,7 +201,7 @@ function TemplateDetails() {
                 className="inline-flex items-center bg-brightBlue text-white font-semibold px-6 py-3 rounded-lg hover:bg-brightBlue/90 transition-colors shadow-sm"
               >
                 <FaShoppingCart className="mr-2" />
-                Buy Now - ₹{template.price || 'N/A'}
+                Buy Now - ₹{parseFloat(template.price || 0).toFixed(2)}
               </button>
             </div>
           </div>
@@ -257,7 +256,9 @@ function TemplateDetails() {
             </div>
           )}
 
+          {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Image Slider */}
             <div>
               <div className="bg-white border border-gray-200 shadow-lg p-4 mb-4 relative">
                 {previewMode === 'screenshot' ? (
@@ -268,6 +269,10 @@ function TemplateDetails() {
                           src={img || 'https://via.placeholder.com/600'}
                           alt={`${template.title} preview ${index + 1}`}
                           className="w-full h-96 object-cover rounded-lg cursor-pointer"
+                          onError={(e) => {
+                            console.log('TemplateDetails Image failed to load:', img);
+                            e.target.src = 'https://via.placeholder.com/600';
+                          }}
                           onClick={() => window.open(img, '_blank')}
                         />
                       </div>
@@ -278,6 +283,10 @@ function TemplateDetails() {
                     src={template.live_preview_url || 'https://via.placeholder.com/600?text=Live+Preview'}
                     title="Live Preview"
                     className="w-full h-96 rounded-lg border-0"
+                    onError={(e) => {
+                      console.log('Live Preview failed to load:', template.live_preview_url);
+                      e.target.src = 'https://via.placeholder.com/600?text=Live+Preview+Unavailable';
+                    }}
                   />
                 )}
               </div>
@@ -290,6 +299,7 @@ function TemplateDetails() {
               </button>
             </div>
 
+            {/* Details Section */}
             <div className="bg-white border border-gray-200 shadow-lg p-6">
               <h2 className="text-2xl font-semibold text-navy-900 mb-4">Template Details</h2>
               <p className="text-gray-700 text-base leading-relaxed mb-6">{template.description || 'No description available.'}</p>
@@ -329,18 +339,19 @@ function TemplateDetails() {
                   className="w-full inline-flex items-center justify-center bg-brightBlue text-white font-semibold px-6 py-3 rounded-lg hover:bg-brightBlue/90 transition-colors shadow-sm"
                 >
                   <FaShoppingCart className="mr-2" />
-                  Buy Now - ₹{template.price || 'N/A'}
+                  Buy Now - ₹{parseFloat(template.price || 0).toFixed(2)}
                 </button>
               </div>
             </div>
           </div>
 
+          {/* Reviews Section */}
           <div className="mt-12">
             <h2 className="text-2xl font-bold text-navy-900 mb-6">Customer Reviews</h2>
             {topReviews.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {topReviews.map((review, index) => (
-                  <div key={index} className="bg-white border border-gray-200 shadow-lg p-6">
+                  <div key={index} className="bg-white border border-gray-200 shadow-lg p-6 rounded-lg">
                     <div className="flex items-center mb-4">
                       {[...Array(5)].map((_, i) => (
                         <FaStar
@@ -361,7 +372,8 @@ function TemplateDetails() {
               <p className="text-gray-500 mb-8">No reviews yet. Be the first to share your experience!</p>
             )}
 
-            <div className="bg-white border border-gray-200 shadow-lg p-6">
+            {/* Review Form */}
+            <div className="bg-white border border-gray-200 shadow-lg p-6 rounded-lg">
               <h3 className="text-lg font-semibold text-navy-900 mb-4">Write a Review</h3>
               {reviewSuccess && (
                 <p className="text-brightBlue mb-4">Review submitted successfully!</p>
@@ -424,6 +436,7 @@ function TemplateDetails() {
             </div>
           </div>
 
+          {/* Related Templates */}
           {relatedTemplates.length > 0 && (
             <div className="mt-12">
               <h2 className="text-2xl font-bold text-navy-900 mb-6">Explore Similar Templates</h2>

@@ -1,4 +1,3 @@
-// src/components/TemplateCard.jsx
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { FaEye, FaShoppingCart, FaCode, FaPaintBrush, FaFileAlt } from 'react-icons/fa';
@@ -44,7 +43,7 @@ function TemplateCard({ template }) {
       }
 
       const cashfree = new window.Cashfree({
-        mode: import.meta.env.VITE_CASHFREE_MODE || 'sandbox', // Use environment variable for mode
+        mode: import.meta.env.VITE_CASHFREE_MODE || 'sandbox',
       });
 
       cashfree
@@ -52,7 +51,7 @@ function TemplateCard({ template }) {
           paymentSessionId: payment_session_id,
           returnUrl: `${
             import.meta.env.VITE_APP_URL || 'http://localhost:5173'
-          }/payment-status?order_id=${order_id}`, // Update to use Vite's env variable
+          }/payment-status?order_id=${order_id}`,
         })
         .then(() => {
           console.log('Payment initiated successfully');
@@ -81,15 +80,30 @@ function TemplateCard({ template }) {
     <>
       <motion.div
         whileHover={{ y: -5, boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)' }}
-        className="bg-white border border-gray-200 shadow-lg p-6"
+        className="bg-white border border-gray-200 shadow-lg p-6 rounded-lg"
       >
-        <img
-          src={template.image || 'https://via.placeholder.com/300'}
-          alt={template.title}
-          className="w-full h-48 object-cover rounded-lg mb-4 transform hover:scale-105 transition-transform duration-300"
-        />
-        <h3 className="text-lg font-semibold text-navy-900 mb-2">{template.title}</h3>
-        <p className="text-gray-700 text-sm mb-3 line-clamp-2">{template.description}</p>
+        {/* Main Image */}
+        <div className="relative overflow-hidden rounded-lg mb-4">
+          <img
+            src={template.image || 'https://via.placeholder.com/300'}
+            alt={template.title}
+            className="w-full h-48 object-cover transform hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              console.log('TemplateCard Image failed to load:', template.image);
+              e.target.src = 'https://via.placeholder.com/300';
+            }}
+          />
+          {/* Overlay for hover effect */}
+          <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity duration-300 flex items-center justify-center">
+            <span className="text-white text-lg font-semibold opacity-0 hover:opacity-100 transition-opacity duration-300">
+              Quick View
+            </span>
+          </div>
+        </div>
+
+        {/* Card Content */}
+        <h3 className="text-lg font-semibold text-navy-900 mb-2 truncate">{template.title}</h3>
+        <p className="text-gray-700 text-sm mb-3 line-clamp-2">{template.description || 'No description available.'}</p>
         <div className="flex flex-wrap gap-2 mb-4">
           {tags.map((tag) => (
             <span
@@ -101,7 +115,7 @@ function TemplateCard({ template }) {
             </span>
           ))}
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center">
           <Link
             to={`/template/${template.id}`}
             className="text-brightBlue font-medium hover:underline flex items-center"
@@ -119,6 +133,7 @@ function TemplateCard({ template }) {
         </div>
       </motion.div>
 
+      {/* Email Modal */}
       {showEmailModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
