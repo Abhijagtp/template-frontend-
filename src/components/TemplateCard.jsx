@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { FaEye, FaShoppingCart, FaCode, FaPaintBrush, FaFileAlt } from 'react-icons/fa';
-import { useState } from 'react';
+import { FaEye, FaShoppingCart, FaCode, FaPaintBrush, FaFileAlt, FaRedo } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
 import api from '../api';
 
 function TemplateCard({ template }) {
@@ -9,6 +9,8 @@ function TemplateCard({ template }) {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [paymentError, setPaymentError] = useState(null);
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   const tags = [
     { name: template.category?.name || 'Template', icon: <FaCode className="mr-1" /> },
@@ -76,6 +78,21 @@ function TemplateCard({ template }) {
     }
   };
 
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoading(false);
+    console.log('TemplateCard Image failed to load:', template.image);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
+  const handleRetryImage = () => {
+    setImageError(false);
+    setImageLoading(true);
+  };
+
   return (
     <>
       <motion.div
@@ -84,25 +101,44 @@ function TemplateCard({ template }) {
       >
         {/* Main Image */}
         <div className="relative overflow-hidden rounded-lg mb-4">
-          <img
-            src={template.image || 'https://via.placeholder.com/300'}
-            alt={template.title}
-            className="w-full h-48 object-cover transform hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              console.log('TemplateCard Image failed to load:', template.image);
-              e.target.src = 'https://via.placeholder.com/300';
-            }}
-          />
+          {imageLoading && (
+            <div className="w-full h-48 flex items-center justify-center bg-gray-100">
+              <p className="text-gray-500">Loading image...</p>
+            </div>
+          )}
+          {!imageLoading && imageError ? (
+            <div className="w-full h-48 flex flex-col items-center justify-center bg-gray-100">
+              <p className="text-red-500 mb-2">Failed to load image</p>
+              <button
+                onClick={handleRetryImage}
+                className="flex items-center text-brightBlue hover:underline"
+              >
+                <FaRedo className="mr-1" />
+                Retry
+              </button>
+            </div>
+          ) : (
+            <img
+              src={template.image || 'https://via.placeholder.com/300'}
+              alt={template.title}
+              className={`w-full h-48 object-cover transform hover:scale-105 transition-transform duration-300 ${imageLoading ? 'hidden' : 'block'}`}
+              onError={handleImageError}
+              onLoad={handleImageLoad}
+              loading="lazy"
+            />
+          )}
           {/* Overlay for hover effect */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity duration-300 flex items-center justify-center">
-            <span className="text-white text-lg font-semibold opacity-0 hover:opacity-100 transition-opacity duration-300">
-              Quick View
-            </span>
-          </div>
+          {!imageError && (
+            <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity duration-300 flex items-center justify-center">
+              <span className="text-white text-lg font-semibold opacity-0 hover:opacity-100 transition-opacity duration-300">
+                Quick View
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Card Content */}
-        <h3 className="text-lg font-semibold text-navy-900 mb-2 truncate">{template.title}</h3>
+        <h3 className="text-lg font-semibold text-navy-900 mb-2 truncate">{template.title || 'Untitled'}</h3>
         <p className="text-gray-700 text-sm mb-3 line-clamp-2">{template.description || 'No description available.'}</p>
         <div className="flex flex-wrap gap-2 mb-4">
           {tags.map((tag) => (

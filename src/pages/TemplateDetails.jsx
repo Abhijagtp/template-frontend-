@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Slider from 'react-slick';
-import { FaShoppingCart, FaEye, FaStar, FaArrowLeft, FaArrowRight, FaCheck, FaHome } from 'react-icons/fa';
+import { FaShoppingCart, FaEye, FaStar, FaArrowLeft, FaArrowRight, FaCheck, FaHome, FaRedo } from 'react-icons/fa';
 import TemplateCard from '../components/TemplateCard';
 import Header from '../components/Header';
 import api from '../api';
@@ -22,6 +22,8 @@ function TemplateDetails() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [paymentError, setPaymentError] = useState(null);
+  const [imageErrors, setImageErrors] = useState({}); // Track errors for each image
+  const [imageLoading, setImageLoading] = useState({}); // Track loading for each image
 
   useEffect(() => {
     const fetchTemplate = async () => {
@@ -29,6 +31,16 @@ function TemplateDetails() {
         setLoading(true);
         const response = await api.get(`/api/templates/${id}/`);
         setTemplate(response.data);
+        // Initialize image loading states
+        const images = [response.data.image, ...(response.data.additional_images || [])];
+        const initialLoading = {};
+        const initialErrors = {};
+        images.forEach((img, index) => {
+          initialLoading[index] = true;
+          initialErrors[index] = false;
+        });
+        setImageLoading(initialLoading);
+        setImageErrors(initialErrors);
       } catch (err) {
         setError(err.response?.data?.detail || 'Failed to load template details.');
       } finally {
@@ -164,6 +176,21 @@ function TemplateDetails() {
     }
   };
 
+  const handleImageError = (index) => {
+    setImageErrors((prev) => ({ ...prev, [index]: true }));
+    setImageLoading((prev) => ({ ...prev, [index]: false }));
+    console.log('TemplateDetails Image failed to load:', [template.image, ...(template.additional_images || [])][index]);
+  };
+
+  const handleImageLoad = (index) => {
+    setImageLoading((prev) => ({ ...prev, [index]: false }));
+  };
+
+  const handleRetryImage = (index) => {
+    setImageErrors((prev) => ({ ...prev, [index]: false }));
+    setImageLoading((prev) => ({ ...prev, [index]: true }));
+  };
+
   if (loading) return <p className="text-center text-navy-900 text-lg py-16">Loading template...</p>;
   if (error) return <p className="text-center text-red-500 text-lg py-16">{error}</p>;
   if (!template) return <p className="text-center text-navy-900 text-lg py-16">Template not found.</p>;
@@ -185,7 +212,7 @@ function TemplateDetails() {
 
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-center mb-10">
-            <h1 className="text-4xl font-bold text-navy-900 mb-4 md:mb-0">{template.title}</h1>
+            <h1 className="text-4xl font-bold text-navy-900 mb-4 md:mb-0">{template.title || 'Untitled'}</h1>
             <div className="flex items-center space-x-4">
               <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (
@@ -265,16 +292,33 @@ function TemplateDetails() {
                   <Slider {...sliderSettings}>
                     {[template.image, ...(template.additional_images || [])].map((img, index) => (
                       <div key={index} className="relative">
-                        <img
-                          src={img || 'https://via.placeholder.com/600'}
-                          alt={`${template.title} preview ${index + 1}`}
-                          className="w-full h-96 object-cover rounded-lg cursor-pointer"
-                          onError={(e) => {
-                            console.log('TemplateDetails Image failed to load:', img);
-                            e.target.src = 'https://via.placeholder.com/600';
-                          }}
-                          onClick={() => window.open(img, '_blank')}
-                        />
+                        {imageLoading[index] && (
+                          <div className="w-full h-96 flex items-center justify-center bg-gray-100">
+                            <p className="text-gray-500">Loading image...</p>
+                          </div>
+                        )}
+                        {!imageLoading[index] && imageErrors[index] ? (
+                          <div className="w-full h-96 flex flex-col items-center justify-center bg-gray-100">
+                            <p className="text-red-500 mb-2">Failed to load image</p>
+                            <button
+                              onClick={() => handleRetryImage(index)}
+                              className="flex items-center text-brightBlue hover:underline"
+                            >
+                              <FaRedo className="mr-1" />
+                              Retry
+                            </button>
+                          </div>
+                        ) : (
+                          <img
+                            src={img || 'https://via.placeholder.com/600'}
+                            alt={`${template.title} preview ${index + 1}`}
+                            className={`w-full h-96 object-cover rounded-lg cursor-pointer ${imageLoading[index] ? 'hidden' : 'block'}`}
+                            onError={() => handleImageError(index)}
+                            onLoad={() => handleImageLoad(index)}
+                            onClick={() => window.open(img, '_blank')}
+                            loading="lazy"
+                          />
+                        )}
                       </div>
                     ))}
                   </Slider>
@@ -287,6 +331,7 @@ function TemplateDetails() {
                       console.log('Live Preview failed to load:', template.live_preview_url);
                       e.target.src = 'https://via.placeholder.com/600?text=Live+Preview+Unavailable';
                     }}
+                    loading="lazy"
                   />
                 )}
               </div>
