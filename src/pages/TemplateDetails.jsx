@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Slider from 'react-slick';
@@ -6,6 +6,8 @@ import { FaShoppingCart, FaEye, FaStar, FaArrowLeft, FaArrowRight, FaCheck, FaHo
 import TemplateCard from '../components/TemplateCard';
 import Header from '../components/Header';
 import api from '../api';
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 
 function TemplateDetails() {
   const { id } = useParams();
@@ -22,20 +24,23 @@ function TemplateDetails() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [paymentError, setPaymentError] = useState(null);
-  const [imageErrors, setImageErrors] = useState({}); // Track errors for each image
-  const [imageLoading, setImageLoading] = useState({}); // Track loading for each image
+  const [imageErrors, setImageErrors] = useState({});
+  const [imageLoading, setImageLoading] = useState({});
 
+  // Fetch template details
   useEffect(() => {
     const fetchTemplate = async () => {
       try {
         setLoading(true);
         const response = await api.get(`/api/templates/${id}/`);
-        setTemplate(response.data);
+        const data = response.data;
+        setTemplate(data);
+
         // Initialize image loading states
-        const images = [response.data.image, ...(response.data.additional_images || [])];
+        const images = [data.image, ...(data.additional_images || [])];
         const initialLoading = {};
         const initialErrors = {};
-        images.forEach((img, index) => {
+        images.forEach((_, index) => {
           initialLoading[index] = true;
           initialErrors[index] = false;
         });
@@ -48,10 +53,16 @@ function TemplateDetails() {
       }
     };
 
+    fetchTemplate();
+  }, [id]);
+
+  // Fetch related templates
+  useEffect(() => {
     const fetchRelatedTemplates = async () => {
+      if (!template?.category?.id) return;
       try {
         const response = await api.get('/api/templates/', {
-          params: { category: template?.category?.id || '' },
+          params: { category: template.category.id },
         });
         setRelatedTemplates(
           response.data.filter((t) => t.id !== parseInt(id)).slice(0, 3)
@@ -61,19 +72,31 @@ function TemplateDetails() {
       }
     };
 
-    fetchTemplate();
     if (template) {
       fetchRelatedTemplates();
     }
-  }, [id, template?.category?.id]);
+  }, [id, template]);
 
-  const sliderSettings = {
+  // Preload main image
+  useEffect(() => {
+    if (template?.image) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = template.image;
+      document.head.appendChild(link);
+    }
+  }, [template?.image]);
+
+  // Slider settings
+  const sliderSettings = useMemo(() => ({
     dots: true,
     infinite: true,
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
     arrows: true,
+    lazyLoad: 'ondemand', // Optimize slider performance
     prevArrow: (
       <div className="carousel-arrow -left-10" aria-label="Previous Slide">
         <FaArrowLeft className="text-3xl text-brightBlue" />
@@ -84,13 +107,13 @@ function TemplateDetails() {
         <FaArrowRight className="text-3xl text-brightBlue" />
       </div>
     ),
-  };
+  }), []);
 
-  const handlePreviewToggle = () => {
-    setPreviewMode(previewMode === 'screenshot' ? 'live' : 'screenshot');
-  };
+  const handlePreviewToggle = useCallback(() => {
+    setPreviewMode((prev) => (prev === 'screenshot' ? 'live' : 'screenshot'));
+  }, []);
 
-  const handleReviewSubmit = async (e) => {
+  const handleReviewSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (reviewForm.rating === 0) {
       setReviewError('Please select a rating.');
@@ -112,25 +135,25 @@ function TemplateDetails() {
     } catch (err) {
       setReviewError(err.response?.data?.detail || 'Failed to submit review.');
     }
-  };
+  }, [id, reviewForm]);
 
-  const handleReviewChange = (e) => {
-    setReviewForm({ ...reviewForm, [e.target.name]: e.target.value });
-  };
+  const handleReviewChange = useCallback((e) => {
+    setReviewForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }, []);
 
-  const handleStarClick = (rating) => {
-    setReviewForm({ ...reviewForm, rating });
-  };
+  const handleStarClick = useCallback((rating) => {
+    setReviewForm((prev) => ({ ...prev, rating }));
+  }, []);
 
-  const handleStarHover = (rating) => {
+  const handleStarHover = useCallback((rating) => {
     setHoverRating(rating);
-  };
+  }, []);
 
-  const handleStarHoverOut = () => {
+  const handleStarHoverOut = useCallback(() => {
     setHoverRating(0);
-  };
+  }, []);
 
-  const handlePayment = async () => {
+  const handlePayment = useCallback(async () => {
     if (!email) {
       setPaymentError('Please enter your email address.');
       return;
@@ -165,39 +188,59 @@ function TemplateDetails() {
             import.meta.env.VITE_APP_URL || 'http://localhost:5173'
           }/payment-status?order_id=${order_id}`,
         })
-        .then(() => {
-          // Payment initiated, user redirected to payment gateway
-        })
-        .catch((err) => {
+        .then(() => {})
+        .catch(() => {
           setPaymentError('Failed to initiate payment.');
         });
     } catch (err) {
       setPaymentError(err.message || 'Failed to initiate payment.');
     }
-  };
+  }, [id, email, phone]);
 
-  const handleImageError = (index) => {
+  const handleImageError = useCallback((index) => {
     setImageErrors((prev) => ({ ...prev, [index]: true }));
     setImageLoading((prev) => ({ ...prev, [index]: false }));
-    console.log('TemplateDetails Image failed to load:', [template.image, ...(template.additional_images || [])][index]);
-  };
+    console.log('TemplateDetails Image failed to load:', [template?.image, ...(template?.additional_images || [])][index]);
+  }, [template]);
 
-  const handleImageLoad = (index) => {
+  const handleImageLoad = useCallback((index) => {
     setImageLoading((prev) => ({ ...prev, [index]: false }));
-  };
+  }, []);
 
-  const handleRetryImage = (index) => {
+  const handleRetryImage = useCallback((index) => {
     setImageErrors((prev) => ({ ...prev, [index]: false }));
     setImageLoading((prev) => ({ ...prev, [index]: true }));
-  };
+  }, []);
 
-  if (loading) return <p className="text-center text-navy-900 text-lg py-16">Loading template...</p>;
+  const topReviews = useMemo(() => (template?.reviews || [])
+    .sort((a, b) => b.rating - a.rating || new Date(b.date) - new Date(a.date))
+    .slice(0, 5), [template]);
+
+  if (loading) {
+    return (
+      <div className="bg-lightBlue min-h-screen">
+        <Header />
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="animate-pulse">
+            <div className="h-10 w-1/2 bg-gray-300 rounded mb-6"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="h-96 bg-gray-300 rounded-lg"></div>
+              <div className="bg-white border border-gray-200 shadow-lg p-6 rounded-lg">
+                <div className="h-6 w-1/3 bg-gray-300 rounded mb-4"></div>
+                <div className="h-4 w-full bg-gray-300 rounded mb-2"></div>
+                <div className="h-4 w-3/4 bg-gray-300 rounded mb-4"></div>
+                <div className="h-6 w-1/4 bg-gray-300 rounded mb-2"></div>
+                <div className="h-4 w-1/2 bg-gray-300 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   if (error) return <p className="text-center text-red-500 text-lg py-16">{error}</p>;
   if (!template) return <p className="text-center text-navy-900 text-lg py-16">Template not found.</p>;
-
-  const topReviews = (template.reviews || [])
-    .sort((a, b) => b.rating - a.rating || new Date(b.date) - new Date(a.date))
-    .slice(0, 5);
 
   return (
     <div className="bg-lightBlue min-h-screen">
@@ -219,6 +262,7 @@ function TemplateDetails() {
                   <FaStar
                     key={i}
                     className={i < Math.round(template.average_rating || 0) ? 'text-brightBlue' : 'text-gray-300'}
+                    aria-label={`Rating ${i + 1}`}
                   />
                 ))}
                 <span className="ml-2 text-gray-700">{(template.average_rating || 0).toFixed(1)}</span>
@@ -226,6 +270,7 @@ function TemplateDetails() {
               <button
                 onClick={() => setShowEmailModal(true)}
                 className="inline-flex items-center bg-brightBlue text-white font-semibold px-6 py-3 rounded-lg hover:bg-brightBlue/90 transition-colors shadow-sm"
+                aria-label="Buy Now"
               >
                 <FaShoppingCart className="mr-2" />
                 Buy Now - ₹{parseFloat(template.price || 0).toFixed(2)}
@@ -241,22 +286,29 @@ function TemplateDetails() {
                 {paymentError && <p className="text-red-500 mb-4">{paymentError}</p>}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-navy-900 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-navy-900 mb-1" htmlFor="email-input">
+                      Email
+                    </label>
                     <input
+                      id="email-input"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-lightBlue border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brightBlue"
                       placeholder="Enter your email"
                       required
+                      aria-required="true"
                     />
                     <p className="text-sm text-gray-600 mt-1">
                       Please ensure this email is correct, as it will be used to send your template file.
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-navy-900 mb-1">Phone (Optional)</label>
+                    <label className="block text-sm font-medium text-navy-900 mb-1" htmlFor="phone-input">
+                      Phone (Optional)
+                    </label>
                     <input
+                      id="phone-input"
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
@@ -269,12 +321,14 @@ function TemplateDetails() {
                   <button
                     onClick={() => setShowEmailModal(false)}
                     className="bg-gray-300 text-navy-900 font-semibold px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                    aria-label="Cancel"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handlePayment}
                     className="bg-brightBlue text-white font-semibold px-4 py-2 rounded-lg hover:bg-brightBlue/90 transition-colors"
+                    aria-label="Proceed to Pay"
                   >
                     Proceed to Pay
                   </button>
@@ -294,7 +348,7 @@ function TemplateDetails() {
                       <div key={index} className="relative">
                         {imageLoading[index] && (
                           <div className="w-full h-96 flex items-center justify-center bg-gray-100">
-                            <p className="text-gray-500">Loading image...</p>
+                            <div className="animate-pulse h-96 w-full bg-gray-300 rounded-lg"></div>
                           </div>
                         )}
                         {!imageLoading[index] && imageErrors[index] ? (
@@ -303,6 +357,7 @@ function TemplateDetails() {
                             <button
                               onClick={() => handleRetryImage(index)}
                               className="flex items-center text-brightBlue hover:underline"
+                              aria-label="Retry loading image"
                             >
                               <FaRedo className="mr-1" />
                               Retry
@@ -338,6 +393,7 @@ function TemplateDetails() {
               <button
                 onClick={handlePreviewToggle}
                 className="w-full bg-white border border-brightBlue text-brightBlue font-medium py-2 rounded-lg hover:bg-brightBlue hover:text-white transition-colors flex items-center justify-center"
+                aria-label={previewMode === 'screenshot' ? 'Switch to Live Preview' : 'Switch to Screenshots'}
               >
                 <FaEye className="mr-2" />
                 {previewMode === 'screenshot' ? 'Switch to Live Preview' : 'Switch to Screenshots'}
@@ -382,6 +438,7 @@ function TemplateDetails() {
                 <button
                   onClick={() => setShowEmailModal(true)}
                   className="w-full inline-flex items-center justify-center bg-brightBlue text-white font-semibold px-6 py-3 rounded-lg hover:bg-brightBlue/90 transition-colors shadow-sm"
+                  aria-label="Buy Now"
                 >
                   <FaShoppingCart className="mr-2" />
                   Buy Now - ₹{parseFloat(template.price || 0).toFixed(2)}
@@ -402,6 +459,7 @@ function TemplateDetails() {
                         <FaStar
                           key={i}
                           className={i < (review.rating || 0) ? 'text-brightBlue' : 'text-gray-300'}
+                          aria-label={`Review rating ${i + 1}`}
                         />
                       ))}
                     </div>
@@ -426,8 +484,11 @@ function TemplateDetails() {
               {reviewError && <p className="text-red-500 mb-4">{reviewError}</p>}
               <form onSubmit={handleReviewSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-navy-900 mb-1">Your Name</label>
+                  <label className="block text-sm font-medium text-navy-900 mb-1" htmlFor="review-user">
+                    Your Name
+                  </label>
                   <input
+                    id="review-user"
                     type="text"
                     name="user"
                     value={reviewForm.user}
@@ -435,6 +496,7 @@ function TemplateDetails() {
                     required
                     className="w-full bg-lightBlue border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brightBlue"
                     placeholder="Enter your name"
+                    aria-required="true"
                   />
                 </div>
                 <div>
@@ -443,25 +505,33 @@ function TemplateDetails() {
                     {[...Array(5)].map((_, i) => {
                       const ratingValue = i + 1;
                       return (
-                        <FaStar
+                        <button
+                          type="button"
                           key={i}
-                          className={
-                            ratingValue <= (hoverRating || reviewForm.rating)
-                              ? 'text-brightBlue cursor-pointer'
-                              : 'text-gray-300 cursor-pointer'
-                          }
                           onClick={() => handleStarClick(ratingValue)}
                           onMouseEnter={() => handleStarHover(ratingValue)}
                           onMouseLeave={handleStarHoverOut}
-                          size={24}
-                        />
+                          aria-label={`Rate ${ratingValue} stars`}
+                        >
+                          <FaStar
+                            className={
+                              ratingValue <= (hoverRating || reviewForm.rating)
+                                ? 'text-brightBlue cursor-pointer'
+                                : 'text-gray-300 cursor-pointer'
+                            }
+                            size={24}
+                          />
+                        </button>
                       );
                     })}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-navy-900 mb-1">Comment</label>
+                  <label className="block text-sm font-medium text-navy-900 mb-1" htmlFor="review-comment">
+                    Comment
+                  </label>
                   <textarea
+                    id="review-comment"
                     name="comment"
                     value={reviewForm.comment}
                     onChange={handleReviewChange}
@@ -469,11 +539,13 @@ function TemplateDetails() {
                     className="w-full bg-lightBlue border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brightBlue"
                     rows="4"
                     placeholder="Share your experience"
+                    aria-required="true"
                   ></textarea>
                 </div>
                 <button
                   type="submit"
                   className="w-full bg-brightBlue text-white font-semibold px-6 py-3 rounded-lg hover:bg-brightBlue/90 transition-colors shadow-sm"
+                  aria-label="Submit Review"
                 >
                   Submit Review
                 </button>
@@ -485,7 +557,7 @@ function TemplateDetails() {
           {relatedTemplates.length > 0 && (
             <div className="mt-12">
               <h2 className="text-2xl font-bold text-navy-900 mb-6">Explore Similar Templates</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cells-2 lg:grid-cols-3 gap-6">
                 {relatedTemplates.map((template) => (
                   <TemplateCard key={template.id} template={template} />
                 ))}
